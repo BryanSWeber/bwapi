@@ -23,6 +23,7 @@ TestResults
 Release_Binary/AIModuleLoader
 Release_Binary/Chaoslauncher/Plugins/BWAPI_*
 Release_Binary/Chaoslauncher/BWAPI*
+Release_Binary/ExampleAIClient
 Release_Binary/ExampleAIModule
 Release_Binary/ExampleTournamentModule
 Release_Binary/include
