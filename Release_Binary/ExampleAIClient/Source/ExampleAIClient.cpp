@@ -21,7 +21,7 @@ void printPlayerVision(BWAPI::Player p); // Information about total player visib
 void printPlayerDetails(BWAPI::Player p); // Information about a player's status, upgrades/researches, resources.
 void printGameDetails(Event e); //Information about the game's initial conditions and end conditions.
 int estimateVisionTiles(Player p); //for a specific player, estimated.
-void drawVisibilityData(); 
+void drawVisibilityData(); // Built-in Diagnostics shows all visiblity for all players, cannot distinguish for whom each tile is visible for.
 void showPlayers();
 void showForces();
 bool show_bullets;
@@ -397,12 +397,12 @@ int estimateVisionTiles(Player p) {
 
     int vision_tile_count = 0;
     int max_visibilty = 0;
-    for (int tile_x = 1; tile_x <= map_x; tile_x++) { // there is no tile (0,0)
-        for (int tile_y = 1; tile_y <= map_y; tile_y++) {
+    for (int tile_x = 0; tile_x <= map_x; tile_x++) { // there is no tile (0,0)
+        for (int tile_y = 0; tile_y <= map_y; tile_y++) {
             for (auto u : Broodwar->getUnitsOnTile(tile_x,tile_y)) {
                 if (u->getPlayer() == p && !u->isBlind() && !u->isMorphing() && !u->isConstructing()) {
-                    visibility[tile_x][tile_y] = std::max(u->getType().sightRange() / 32, static_cast<int>(visibility[tile_x][tile_y]));
-                    max_visibilty = std::max(u->getType().sightRange() / 32, max_visibilty);
+                    visibility[tile_x][tile_y] = std::max(u->getType().sightRange() / 32 + 1, static_cast<int>(visibility[tile_x][tile_y]));
+                    max_visibilty = std::max(u->getType().sightRange() / 32 + 1, max_visibilty);
                 }
             }
         }
@@ -411,8 +411,8 @@ int estimateVisionTiles(Player p) {
     max_visibilty++;
 
     while (max_visibilty >= 0) {
-        for (int tile_x = 1; tile_x <= map_x; tile_x++) { // there is no tile (0,0)
-            for (int tile_y = 1; tile_y <= map_y; tile_y++) {
+        for (int tile_x = 0; tile_x <= map_x; tile_x++) { // there is no tile (0,0)
+            for (int tile_y = 0; tile_y <= map_y; tile_y++) {
                 double lateral_tiles = std::max({
                     visibility[tile_x + 1][tile_y],
                     visibility[tile_x - 1][tile_y],
@@ -425,14 +425,14 @@ int estimateVisionTiles(Player p) {
                     visibility[tile_x - 1][tile_y + 1],
                     visibility[tile_x - 1][tile_y - 1]
                     });
-                visibility[tile_x][tile_y] = std::max({ lateral_tiles - 0.9999, diagonal_tiles - sqrt(2.0), visibility[tile_x][tile_y], 0.0 }); //0.999 is because unit vision seems to start a hair beyond its starting tile.  Corrects a vision imbalance on the outermost fvision radius.
+                visibility[tile_x][tile_y] = std::max({ lateral_tiles - 1.0, diagonal_tiles - sqrt(2.0), visibility[tile_x][tile_y], 0.0 }); //0.999 is because unit vision seems to start a hair beyond its starting tile.  Corrects a vision imbalance on the outermost fvision radius.
             }
         }
         max_visibilty--;
     }
 
-    for (int tile_x = 1; tile_x <= map_x; tile_x++) { // there is no tile (0,0)
-        for (int tile_y = 1; tile_y <= map_y; tile_y++) {
+    for (int tile_x = 0; tile_x <= map_x; tile_x++) { // there is no tile (0,0)
+        for (int tile_y = 0; tile_y <= map_y; tile_y++) {
             if (visibility[tile_x][tile_y] > 0.0) {
                 vision_tile_count++;
                 Position pos = Position(TilePosition(tile_x, tile_y));
