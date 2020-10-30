@@ -15,7 +15,7 @@ using namespace BWAPI;
 int main(int argc, const char * argv[]);
 void drawStats();
 void drawBullets();
-//void printUnitEventDetails(BWAPI::Event e);
+void printUnitEventDetails(BWAPI::Event e);
 void printUnitDetails(BWAPI::Unit u); //Information about a unit
 void printPlayerVision(BWAPI::Player p); // Information about total player visiblity, estimated.
 void printPlayerDetails(BWAPI::Player p); // Information about a player's status, upgrades/researches, resources.
@@ -93,7 +93,8 @@ int main(int argc, const char* argv[])
                 {
                 case EventType::MatchEnd:
                     printGameDetails(e);
-                    break;
+                default:
+                    printUnitEventDetails(e);
                 }
             }
 
@@ -169,6 +170,46 @@ void drawBullets()
     Broodwar->drawLineMap(p, p + Position((int)velocityX, (int)velocityY), b->getPlayer() == Broodwar->self() ? Colors::Green : Colors::Red);
     Broodwar->drawTextMap(p, "%c%s", b->getPlayer() == Broodwar->self() ? Text::Green : Text::Red, b->getType().c_str());
   }
+}
+
+void printUnitEventDetails(BWAPI::Event e)
+{
+    std::ofstream fout;  // Create Object of Ofstream
+    std::ifstream fin;
+    std::string filename = prettyRepName() + static_cast<std::string>("-Events") + static_cast<std::string>(".csv");
+
+    fin.open(filename);
+    std::string line;
+    int csv_length = 0;
+    while (getline(fin, line)) {
+        ++csv_length;
+    }
+    fin.close(); // I have read the entire file already, need to close it and begin again.  Lacks elegance, but works.
+
+    if (csv_length < 1) {
+        fout.open(filename, std::ios::app); // Append mode
+        fout << "EventType" << ","
+            << "X.Pos" << "," << "Y.Pos" << ","
+            << "UnitType" << ","
+            << "UnitOwner" << ","
+            << "UnitX.Pos" << "," << "UnitY.Pos" << ","
+            << "FrameCount" << ","
+            << "UnitID" << "\n";
+        fin.close();
+    }
+
+
+    fin.open(filename);
+    fout.open(filename, std::ios::app); // Append mode
+    if (fin.is_open())
+        fout << EventString(e) << ","
+        << e.getPosition().x << "," << e.getPosition().y << ","
+        << (e.getUnit() ? e.getUnit()->getType().c_str() : "No Unit") << ","
+        << (e.getPlayer() ? e.getPlayer()->getName() : "No Player") << ","
+        << (e.getUnit() ? std::to_string(e.getUnit()->getPosition().x).c_str() : "No X" ) << "," << (e.getUnit() ? std::to_string(e.getUnit()->getPosition().y).c_str() : "No Y") << ","
+        <<  Broodwar->getFrameCount() << "\n"; // Writing data to file
+    fin.close();
+    fout.close(); // Closing the file
 }
 
 void drawVisibilityData()
@@ -269,7 +310,7 @@ void printPlayerVision(BWAPI::Player p) {
         fout.open(filename, std::ios::app); // Append mode
         fout << "PlayerName" << ","
             << "FrameCount" << ","
-            << "VisionTiles?" << "\n"; // Writing data to file
+            << "VisionTiles" << "\n"; // Writing data to file
         fin.close();
     }
 
@@ -397,22 +438,23 @@ int estimateVisionTiles(Player p) {
 
     int vision_tile_count = 0;
     int max_visibilty = 0;
-    for (int tile_x = 0; tile_x <= map_x; tile_x++) { // there is no tile (0,0)
-        for (int tile_y = 0; tile_y <= map_y; tile_y++) {
+    for (int tile_x = 1; tile_x <= map_x; tile_x++) { // there is no tile (0,0)
+        for (int tile_y = 1; tile_y <= map_y; tile_y++) {
             for (auto u : Broodwar->getUnitsOnTile(tile_x,tile_y)) {
-                if (u->getPlayer() == p && !u->isBlind() && !u->isMorphing() && !u->isConstructing()) {
-                    visibility[tile_x][tile_y] = std::max(u->getType().sightRange() / 32 + 1, static_cast<int>(visibility[tile_x][tile_y]));
-                    max_visibilty = std::max(u->getType().sightRange() / 32 + 1, max_visibilty);
+                if (u->getPlayer() == p && !u->isBlind() && !u->isMorphing() && !u->isConstructing() && u->getType().sightRange()) {
+                    int sight = u->getType().sightRange() / 32 + 1.0;
+                    visibility[tile_x][tile_y] = std::max(sight, static_cast<int>(visibility[tile_x][tile_y]) );
+                    max_visibilty = std::max(sight, max_visibilty );
                 }
             }
         }
     } // this search must be very exhaustive to do every frame. But C++ does it without any problems.
 
-    max_visibilty++;
+    max_visibilty++; // buffer of one foot
 
     while (max_visibilty >= 0) {
-        for (int tile_x = 0; tile_x <= map_x; tile_x++) { // there is no tile (0,0)
-            for (int tile_y = 0; tile_y <= map_y; tile_y++) {
+        for (int tile_x = 1; tile_x <= map_x; tile_x++) { // Ignore row 0
+            for (int tile_y = 1; tile_y <= map_y; tile_y++) {
                 double lateral_tiles = std::max({
                     visibility[tile_x + 1][tile_y],
                     visibility[tile_x - 1][tile_y],
@@ -431,8 +473,8 @@ int estimateVisionTiles(Player p) {
         max_visibilty--;
     }
 
-    for (int tile_x = 0; tile_x <= map_x; tile_x++) { // there is no tile (0,0)
-        for (int tile_y = 0; tile_y <= map_y; tile_y++) {
+    for (int tile_x = 1; tile_x <= map_x; tile_x++) { // Ignore row 0
+        for (int tile_y = 1; tile_y <= map_y; tile_y++) {
             if (visibility[tile_x][tile_y] > 0.0) {
                 vision_tile_count++;
                 Position pos = Position(TilePosition(tile_x, tile_y));
