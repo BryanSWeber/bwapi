@@ -91,6 +91,8 @@ int main(int argc, const char* argv[])
             {
                 switch (e.getType())
                 {
+                case EventType::MatchFrame:
+                    break; // Do nothing on matchframe events.
                 case EventType::MatchEnd:
                     printGameDetails(e);
                 default:
